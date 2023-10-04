@@ -7,12 +7,16 @@ This is a simple, zero dependency javascript library which implements length-pre
 
 This format is extremely similar to how UTF8 works internally. Its almost certainly possible to reuse existing efficient UTF8 <-> UTF32 SIMD encoders and decoders to make this code faster, but frankly its not a priority right now.
 
-- `0    - 2^7-1` encodes as `0b0xxx_xxxx`
-- `2^7  - 2^14+2^7-1` encodes as `0b10xx_xxxx xxxx_xxxx`
-- `2^14+2^7 - 2^21+2^14+2^7-1` encodes as `0b110x_xxxx xxxx_xxxx xxxx_xxxx`
-- `2^21 - 2^28-1` encodes as `0b1110_xxxx xxxx_xxxx xxxx_xxxx xxxx_xxxx`
+- `0    - 2^7-1` encodes as `0xxx_xxxx`
+- `2^7  - 2^14+2^7-1` encodes as `10xx_xxxx xxxx_xxxx`
+- `2^14+2^7 - 2^21+2^14+2^7-1` encodes as `110x_xxxx xxxx_xxxx xxxx_xxxx`
+- `2^21 - 2^28-1` encodes as `1110_xxxx xxxx_xxxx xxxx_xxxx xxxx_xxxx`
 
-... And so on.
+... And so on, where `xxxx_xxxx` is the next bytes of the number within its range, in big endian. Eg, to encode 130:
+
+1. Its within the 2 byte range, which starts at 128. So we first subtract 130-128 = 2. It will be put into the 2 byte pattern: `10xx_xxxx xxxx_xxxx`.
+2. 2 is then encoded to the big endian bits `0b10`.
+3. The end result is `1000_0000 0000_0010`, or `0x8002`.
 
 The encoding supports any integer up to 128 bits.
 
