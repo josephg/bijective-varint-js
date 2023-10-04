@@ -1,7 +1,7 @@
 import 'mocha'
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
-import {varintEncode, bytesUsed, varintDecode, zigzagEncode, zigzagDecode, varintEncodeBN, varintDecodeBN, zigzagDecodeBN, zigzagEncodeBN} from './index.js'
+import {varintEncode, bytesUsed, varintDecode, zigzagEncode, zigzagDecode, varintEncodeBN, varintDecodeBN, zigzagDecodeBN, zigzagEncodeBN, bufContainsVarint} from './index.js'
 import {randomBytes} from 'node:crypto'
 
 // Helper function while debugging.
@@ -40,6 +40,21 @@ const roundtripBN = (n: bigint) => {
   const encoded = varintEncodeBN(n)
   const decoded = varintDecodeBN(encoded)
   assert.equal(decoded, n)
+
+  // Check that the number of bytes used makes sense.
+  assert.equal(bytesUsed(encoded), encoded.byteLength)
+
+  // Check that hasEnoughBytesForVarint returns the right thing too.
+  assert(bufContainsVarint(encoded))
+  for (let i = 0; i < encoded.byteLength; i++) {
+    const shorter = encoded.slice(0, i)
+
+    if (bufContainsVarint(shorter)) {
+      console.log('Fail with:', 'encoded', encoded, 'shorter', shorter)
+    }
+    assert.equal(bufContainsVarint(shorter), false)
+  }
+
   // if (n !== decoded) {
   //   console.log('MISMATCH', n)
   //   console.log('enc', encoded)

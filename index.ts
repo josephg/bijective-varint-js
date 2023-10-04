@@ -28,8 +28,12 @@ const assert = (a: boolean, msg?: string) => {
 }
 
 /**
- * Maximum number of bytes needed to store a javascript `number`. This is the max size
- * of numbers when calling `varintEncode[Into]` and `varintDecode`.
+ * Maximum number of bytes needed to store a javascript `number` up to 64 bits.
+ * This is the max size of numbers when calling `varintEncode[Into]` and `varintDecode`.
+ *
+ * Implementor's note: We require allocation of 9 bytes, but this could
+ * actually be set to 8 since we don't support normal numbers past
+ * MAX_SAFE_INTEGER (53 bits). The largest safe integer fits in 8 bytes, not 9.
  */
 export const MAX_INT_LEN = 9
 /**
@@ -49,7 +53,52 @@ export function bytesUsed(bytes: Uint8Array): number {
   // The input byte array might be smaller than 4 bytes long - but bit shift coerces undefined
   // to 0, so conveniently enough, this works fine anyway.
   const x = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
+  // console.log('x', ~x, (~x).toString(2).padStart(32, '.'), Math.clz32(~x))
   return Math.clz32(~x) + 1
+}
+
+/**
+ * This method checks to see if the given byte buffer has been filled with enough bytes
+ * to contain a varint. This is useful for network protocols where messages are prefixed
+ * with a length (varint), but you don't know if you've read enough bytes to contain the
+ * message's length (since the length of the length is variable!)
+ *
+ * You could always just try and parse the next number and catch the thrown exception, but
+ * its better if exceptions aren't thrown on the normal execution path in javascript.
+ */
+export function bufContainsVarint(bytes: Uint8Array): boolean {
+  const availableBytes = bytes.byteLength
+  if (availableBytes === 0) return false
+  if (availableBytes >= MAX_BIGINT_LEN) return true
+
+  // Ok, do a more expensive check.
+  const b0 = bytes[0]
+  let x = (b0 << 24)
+
+  // This logic is pretty ugly. Probably worth cleaning it up.
+  if (b0 === 0xff) {
+    // We need the second byte.
+    if (availableBytes <= 1) return false
+    const b1 = bytes[1]
+    x |= (b1 << 16)
+
+    // And the 3rd byte. This is only needed for massive numbers (120 byte range)
+    if (b1 === 0xff) {
+      if (availableBytes <= 2) return false
+      const b2 = bytes[2]
+      x |= (b2 << 8)
+
+      // And the 4th byte.
+      if (b2 === 0xff) {
+        if (availableBytes <= 3) return false
+        const b3 = bytes[3]
+        x |= b3
+      }
+    }
+  }
+
+  const bytesUsed = Math.clz32(~x) + 1
+  return availableBytes >= bytesUsed
 }
 
 function leadingOnes(n: number): number {
