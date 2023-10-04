@@ -136,6 +136,10 @@ function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): numb
  */
 function varintDecodeBN(bytes: Uint8Array): bigint;
 
+
+
+// --- Zigzag encoding ---
+
 /** Zigzag encode a signed integer in a number into an unsigned integer */
 function zigzagEncode(val: number): number;
 
