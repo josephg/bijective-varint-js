@@ -1,7 +1,7 @@
 import 'mocha'
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
-import {varintEncode, bytesUsed, varintDecode, zigzagEncode, zigzagDecode, varintEncodeBN, varintDecodeBN, zigzagDecodeBN, zigzagEncodeBN, bufContainsVarint} from './index.js'
+import {encode, bytesUsed, decode, zigzagEncode, zigzagDecode, encodeBN, decodeBN, zigzagDecodeBN, zigzagEncodeBN, bufContainsVarint} from './index.js'
 import {randomBytes} from 'node:crypto'
 
 // Helper function while debugging.
@@ -23,8 +23,8 @@ const checkZigZag = (n: number, expect?: number) => {
 }
 
 const roundtripUint = (n: number) => {
-  const encoded = varintEncode(n)
-  const decoded = varintDecode(encoded)
+  const encoded = encode(n)
+  const decoded = decode(encoded)
   assert.equal(decoded, n)
 
   if (n < Number.MAX_SAFE_INTEGER / 2) {
@@ -37,8 +37,8 @@ const roundtripUint = (n: number) => {
 
 const roundtripBN = (n: bigint) => {
   // console.log('\nx', n)
-  const encoded = varintEncodeBN(n)
-  const decoded = varintDecodeBN(encoded)
+  const encoded = encodeBN(n)
+  const decoded = decodeBN(encoded)
   assert.equal(decoded, n)
 
   // Check that the number of bytes used makes sense.
@@ -118,11 +118,11 @@ describe('varint encoding', () => {
       const expectBytes = new Uint8Array(JSON.parse(bytes) as number[])
       // return [parseInt(num), JSON.parse(bytes)]
 
-      const actualBytes = varintEncode(num)
+      const actualBytes = encode(num)
 
       const reportedBytes = bytesUsed(actualBytes)
       assert.equal(reportedBytes, actualBytes.length)
-      const actualDecode = varintDecode(actualBytes)
+      const actualDecode = decode(actualBytes)
       assert.equal(num, actualDecode)
 
       assert.deepEqual(expectBytes, actualBytes)

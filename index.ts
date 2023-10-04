@@ -29,7 +29,7 @@ const assert = (a: boolean, msg?: string) => {
 
 /**
  * Maximum number of bytes needed to store a javascript `number` up to 64 bits.
- * This is the max size of numbers when calling `varintEncode[Into]` and `varintDecode`.
+ * This is the max size of numbers when calling `encode[Into]` and `decode`.
  *
  * Implementor's note: We require allocation of 9 bytes, but this could
  * actually be set to 8 since we don't support normal numbers past
@@ -38,7 +38,7 @@ const assert = (a: boolean, msg?: string) => {
 export const MAX_INT_LEN = 9
 /**
  * Maximum number of bytes needed to store the biggest supported bigint (128 bits).
- * This is the max size of numbers when calling `varintEncode[Into]BN` and `varintDecodeBN`.
+ * This is the max size of numbers when calling `encode[Into]BN` and `decodeBN`.
  */
 export const MAX_BIGINT_LEN = 19
 
@@ -116,16 +116,19 @@ for (let i = 1; i < 7; i++) {
 VARINT_ENC_CUTOFFS.push(Number.MAX_VALUE)
 
 /**
- * Encode the given number as a varint. Returns the varint in a Uint8Array.
+ * Encode the given unsigned number as a varint. Returns the varint in a Uint8Array.
  *
- * This method is a wrapper around `varintEncodeInto`. If you're encoding into
- * a buffer, its more efficient to use `varintEncodeInto` directly to avoid
+ * This method is a wrapper around `encodeInto`. If you're encoding into
+ * a buffer, its more efficient to use `encodeInto` directly to avoid
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
+ *
+ * NOTE: This method uses unsigned varint encoding. If you want to encode a signed
+ * number, call encode(zigzagEncode(num)).
  */
-export function varintEncode(num: number): Uint8Array {
+export function encode(num: number): Uint8Array {
   const result = new Uint8Array(MAX_INT_LEN)
-  const bytesUsed = varintEncodeInto(num, result, 0)
+  const bytesUsed = encodeInto(num, result, 0)
   return result.slice(0, bytesUsed)
 }
 
@@ -136,10 +139,10 @@ export function varintEncode(num: number): Uint8Array {
  *
  * The number must be within the javascript safe integer range (53 bits).
  *
- * This method only handles unsigned integers. Use zigzag encoding for signed
- * integers before passing your number into this method.
+ * NOTE: This method only handles unsigned integers. Use zigzag encoding for signed
+ * integers before passing your number into this method. Eg encodeInto(zigzagEncode(num), ..)
  **/
-export function varintEncodeInto(num: number, dest: Uint8Array, offset: number): number {
+export function encodeInto(num: number, dest: Uint8Array, offset: number): number {
   if (num > Number.MAX_SAFE_INTEGER) throw Error('Cannot encode integers above MAX_SAFE_INTEGER')
   if (num < 0) throw Error('Varint encoding: Number must be non-negative')
 
@@ -174,7 +177,7 @@ export function varintEncodeInto(num: number, dest: Uint8Array, offset: number):
  * This method might not use all the bytes of the result. Use bytesUsed() to
  * figure out how many bytes of the input were consumed by this method.
  */
-export function varintDecode(bytes: Uint8Array): number {
+export function decode(bytes: Uint8Array): number {
   if (bytes.length === 0) throw Error('Unexpected end of input')
 
   const b0 = bytes[0]
@@ -212,14 +215,17 @@ for (let i = 1; i < 19; i++) {
 /**
  * Encode the given bigint as a varint. Returns the encoded number in a Uint8Array.
  *
- * This method is a wrapper around `varintEncodeIntoBN`. If you're encoding into
- * a buffer, its more efficient to use `varintEncodeIntoBN` directly to avoid
+ * This method is a wrapper around `encodeIntoBN`. If you're encoding into
+ * a buffer, its more efficient to use `encodeIntoBN` directly to avoid
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
+ *
+ * NOTE: This method uses unsigned varint encoding. If you want to encode a signed
+ * number, call encodeBN(zigzagEncodeBN(num)).
  */
-export function varintEncodeBN(num: bigint): Uint8Array {
+export function encodeBN(num: bigint): Uint8Array {
   const result = new Uint8Array(MAX_BIGINT_LEN)
-  const bytesUsed = varintEncodeIntoBN(num, result, 0)
+  const bytesUsed = encodeIntoBN(num, result, 0)
   return result.slice(0, bytesUsed)
 }
 
@@ -231,17 +237,18 @@ export const MAX_SAFE_BIGINT = 2n**128n - 1n
  * Uint8Array at the specified offset. Returns number of bytes consumed in dest.
  * The passed array must have enough capacity for MAX_BIGINT_LEN bytes (19 bytes).
  *
- * This method only handles unsigned integers. Use zigzag encoding for signed
- * integers before passing your number into this method.
+ * NOTE: This method only handles unsigned integers. Use zigzag encoding for signed
+ * integers before passing your number into this method. Eg:
+ * encodeIntoBN(zigzagEncodeBN(num), ...).
  *
  * bijective-varint encoding only supports numbers up to 128 bits. This method
  * will fail (throw an exception) if you pass a number which does not fit within
  * the safe range.
  **/
-export function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number {
+export function encodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number {
   if (num < 0n) throw Error('Varint encoding: Number must be non-negative')
   // When we can, its faster to immediately convert to a Number rather than deal with BigInts.
-  if (num < Number.MAX_SAFE_INTEGER) return varintEncodeInto(Number(num), dest, offset)
+  if (num < Number.MAX_SAFE_INTEGER) return encodeInto(Number(num), dest, offset)
   if (num > MAX_SAFE_BIGINT) throw Error('Cannot encode unsigned integers above 2^128') // Could support them pretty easily tho.
 
   // let prefix = 0
@@ -288,7 +295,7 @@ export function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number
  * Callers must ensure the entire number is ready in the buffer before calling
  * this method.
  */
-export function varintDecodeBN(bytes: Uint8Array): bigint {
+export function decodeBN(bytes: Uint8Array): bigint {
   if (bytes.length === 0) throw Error('Unexpected end of input')
 
   const b0 = bytes[0]

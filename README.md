@@ -33,10 +33,10 @@ Then:
 ```javascript
 const varint = require('bijective-varint')
 
-const enc = varint.varintEncode(2020304050)
+const enc = varint.encode(2020304050)
 // enc = Uint8Array(5) [ 240, 104, 75, 36, 50 ]
 
-const dec = varint.varintDecode(enc)
+const dec = varint.decode(enc)
 // dec = 2020304050
 ```
 
@@ -46,14 +46,18 @@ The API is defined and exposed via the following typescript definitions:
 
 ```typescript
 /**
- * Maximum number of bytes needed to store a javascript `number`. This is the max size
- * of numbers when calling `varintEncode[Into]` and `varintDecode`.
+ * Maximum number of bytes needed to store a javascript `number` up to 64 bits.
+ * This is the max size of numbers when calling `encode[Into]` and `decode`.
+ *
+ * Implementor's note: We require allocation of 9 bytes, but this could
+ * actually be set to 8 since we don't support normal numbers past
+ * MAX_SAFE_INTEGER (53 bits). The largest safe integer fits in 8 bytes, not 9.
  */
 const MAX_INT_LEN = 9;
 
 /**
  * Maximum number of bytes needed to store the biggest supported bigint (128 bits).
- * This is the max size of numbers when calling `varintEncode[Into]BN` and `varintDecodeBN`.
+ * This is the max size of numbers when calling `encode[Into]BN` and `decodeBN`.
  */
 const MAX_BIGINT_LEN = 19;
 
@@ -64,14 +68,28 @@ const MAX_BIGINT_LEN = 19;
 function bytesUsed(bytes: Uint8Array): number;
 
 /**
- * Encode the given number as a varint. Returns the varint in a Uint8Array.
+ * This method checks to see if the given byte buffer has been filled with enough bytes
+ * to contain a varint. This is useful for network protocols where messages are prefixed
+ * with a length (varint), but you don't know if you've read enough bytes to contain the
+ * message's length (since the length of the length is variable!)
  *
- * This method is a wrapper around `varintEncodeInto`. If you're encoding into
- * a buffer, its more efficient to use `varintEncodeInto` directly to avoid
+ * You could always just try and parse the next number and catch the thrown exception, but
+ * its better if exceptions aren't thrown on the normal execution path in javascript.
+ */
+function bufContainsVarint(bytes: Uint8Array): boolean;
+
+/**
+ * Encode the given unsigned number as a varint. Returns the varint in a Uint8Array.
+ *
+ * This method is a wrapper around `encodeInto`. If you're encoding into
+ * a buffer, its more efficient to use `encodeInto` directly to avoid
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
+ *
+ * NOTE: This method uses unsigned varint encoding. If you want to encode a signed
+ * number, call encode(zigzagEncode(num)).
  */
-function varintEncode(num: number): Uint8Array;
+function encode(num: number): Uint8Array;
 
 /**
  * Encode the specified unsigned number into varint encoding, into the provided
@@ -80,10 +98,10 @@ function varintEncode(num: number): Uint8Array;
  *
  * The number must be within the javascript safe integer range (53 bits).
  *
- * This method only handles unsigned integers. Use zigzag encoding for signed
- * integers before passing your number into this method.
+ * NOTE: This method only handles unsigned integers. Use zigzag encoding for signed
+ * integers before passing your number into this method. Eg encodeInto(zigzagEncode(num), ..)
  **/
-function varintEncodeInto(num: number, dest: Uint8Array, offset: number): number;
+function encodeInto(num: number, dest: Uint8Array, offset: number): number;
 
 /**
  * Decode the varint contained in a Uint8Array. The number is returned.
@@ -91,21 +109,20 @@ function varintEncodeInto(num: number, dest: Uint8Array, offset: number): number
  * This method might not use all the bytes of the result. Use bytesUsed() to
  * figure out how many bytes of the input were consumed by this method.
  */
-function varintDecode(bytes: Uint8Array): number;
-
-
-
-// --- Bigint variants ---
+function decode(bytes: Uint8Array): number;
 
 /**
  * Encode the given bigint as a varint. Returns the encoded number in a Uint8Array.
  *
- * This method is a wrapper around `varintEncodeIntoBN`. If you're encoding into
- * a buffer, its more efficient to use `varintEncodeIntoBN` directly to avoid
+ * This method is a wrapper around `encodeIntoBN`. If you're encoding into
+ * a buffer, its more efficient to use `encodeIntoBN` directly to avoid
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
+ *
+ * NOTE: This method uses unsigned varint encoding. If you want to encode a signed
+ * number, call encodeBN(zigzagEncodeBN(num)).
  */
-function varintEncodeBN(num: bigint): Uint8Array;
+function encodeBN(num: bigint): Uint8Array;
 
 /** The largest unsigned bigint we can encode (2^128 - 1) */
 const MAX_SAFE_BIGINT: bigint;
@@ -115,14 +132,15 @@ const MAX_SAFE_BIGINT: bigint;
  * Uint8Array at the specified offset. Returns number of bytes consumed in dest.
  * The passed array must have enough capacity for MAX_BIGINT_LEN bytes (19 bytes).
  *
- * This method only handles unsigned integers. Use zigzag encoding for signed
- * integers before passing your number into this method.
+ * NOTE: This method only handles unsigned integers. Use zigzag encoding for signed
+ * integers before passing your number into this method. Eg:
+ * encodeIntoBN(zigzagEncodeBN(num), ...).
  *
  * bijective-varint encoding only supports numbers up to 128 bits. This method
  * will fail (throw an exception) if you pass a number which does not fit within
  * the safe range.
  **/
-function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number;
+function encodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number;
 
 /**
  * Decode the varint contained in a Uint8Array into a bigint. The number is
@@ -134,11 +152,7 @@ function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): numb
  * Callers must ensure the entire number is ready in the buffer before calling
  * this method.
  */
-function varintDecodeBN(bytes: Uint8Array): bigint;
-
-
-
-// --- Zigzag encoding ---
+function decodeBN(bytes: Uint8Array): bigint;
 
 /** Zigzag encode a signed integer in a number into an unsigned integer */
 function zigzagEncode(val: number): number;
@@ -151,17 +165,6 @@ function zigzagEncodeBN(val: bigint): bigint;
 
 /** Zigzag decode an unsigned bigint into a signed bigint */
 function zigzagDecodeBN(val: bigint): bigint;
-
-/**
- * This method checks to see if the given byte buffer has been filled with enough bytes
- * to contain a varint. This is useful for network protocols where messages are prefixed
- * with a length (varint), but you don't know if you've read enough bytes to contain the
- * message's length (since the length of the length is variable!)
- *
- * You could always just try and parse the next number and catch the thrown exception, but
- * its better if exceptions aren't thrown on the normal execution path in javascript.
- */
-function bufContainsVarint(bytes: Uint8Array): boolean
 ```
 
 # License
