@@ -2,9 +2,17 @@
   "name": "bijective-varint",
   "version": "1.0.0",
   "description": "Length prefixed varint encoding",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": "Joseph Gentle <me@josephg.com>",
   "license": "MIT",
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/index.js.map",
+    "index.ts"
+  ],
+  "keywords": ["varint", "encoding", "bijective"],
   "devDependencies": {
     "@types/mocha": "^10.0.2",
     "@types/node": "^20.8.2",

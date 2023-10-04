@@ -1,7 +1,7 @@
 import 'mocha'
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
-import {varintEncode, bytesUsed, varintDecode, zigzagEncode, zigzagDecode, varintEncodeBN, varintDecodeBN, zigzagDecodeBN, zigzagEncodeBN} from './varint.js'
+import {varintEncode, bytesUsed, varintDecode, zigzagEncode, zigzagDecode, varintEncodeBN, varintDecodeBN, zigzagDecodeBN, zigzagEncodeBN} from './index.js'
 import {randomBytes} from 'node:crypto'
 
 // Helper function while debugging.
