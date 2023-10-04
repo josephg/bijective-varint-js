@@ -151,6 +151,17 @@ function zigzagEncodeBN(val: bigint): bigint;
 
 /** Zigzag decode an unsigned bigint into a signed bigint */
 function zigzagDecodeBN(val: bigint): bigint;
+
+/**
+ * This method checks to see if the given byte buffer has been filled with enough bytes
+ * to contain a varint. This is useful for network protocols where messages are prefixed
+ * with a length (varint), but you don't know if you've read enough bytes to contain the
+ * message's length (since the length of the length is variable!)
+ *
+ * You could always just try and parse the next number and catch the thrown exception, but
+ * its better if exceptions aren't thrown on the normal execution path in javascript.
+ */
+function bufContainsVarint(bytes: Uint8Array): boolean
 ```
 
 # License
