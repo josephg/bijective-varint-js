@@ -20,6 +20,8 @@ For numbers above 64 bits, it would be tempting to use `0x1111_1111 1111_1111 xx
 
 For negative integers, we use protobuf's [zigzag encoding](https://protobuf.dev/programming-guides/encoding/) format. (0 encodes as 0, -1 encodes as 1, 1 encodes as 2, -2 encodes as 3, and so on).
 
+For more examples, or if you want to test compatibility with another implementation, see compatibility tests in [varint_tests.txt](varint_tests.txt).
+
 ## How to use it
 
 ```
@@ -38,28 +40,28 @@ const dec = varint.varintDecode(enc)
 // dec = 2020304050
 ```
 
-## API
+## API reference
 
-The API is exported via typescript definitions.
+The API is defined and exposed via the following typescript definitions:
 
 ```typescript
 /**
  * Maximum number of bytes needed to store a javascript `number`. This is the max size
  * of numbers when calling `varintEncode[Into]` and `varintDecode`.
  */
-export declare const MAX_INT_LEN = 9;
+const MAX_INT_LEN = 9;
 
 /**
  * Maximum number of bytes needed to store the biggest supported bigint (128 bits).
  * This is the max size of numbers when calling `varintEncode[Into]BN` and `varintDecodeBN`.
  */
-export declare const MAX_BIGINT_LEN = 19;
+const MAX_BIGINT_LEN = 19;
 
 /**
  * Assuming the start of a Uint8Array contains a varint, this method return the number of bytes
  * the varint takes up
  */
-export declare function bytesUsed(bytes: Uint8Array): number;
+function bytesUsed(bytes: Uint8Array): number;
 
 /**
  * Encode the given number as a varint. Returns the varint in a Uint8Array.
@@ -69,7 +71,7 @@ export declare function bytesUsed(bytes: Uint8Array): number;
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
  */
-export declare function varintEncode(num: number): Uint8Array;
+function varintEncode(num: number): Uint8Array;
 
 /**
  * Encode the specified unsigned number into varint encoding, into the provided
@@ -81,7 +83,7 @@ export declare function varintEncode(num: number): Uint8Array;
  * This method only handles unsigned integers. Use zigzag encoding for signed
  * integers before passing your number into this method.
  **/
-export declare function varintEncodeInto(num: number, dest: Uint8Array, offset: number): number;
+function varintEncodeInto(num: number, dest: Uint8Array, offset: number): number;
 
 /**
  * Decode the varint contained in a Uint8Array. The number is returned.
@@ -89,7 +91,11 @@ export declare function varintEncodeInto(num: number, dest: Uint8Array, offset: 
  * This method might not use all the bytes of the result. Use bytesUsed() to
  * figure out how many bytes of the input were consumed by this method.
  */
-export declare function varintDecode(bytes: Uint8Array): number;
+function varintDecode(bytes: Uint8Array): number;
+
+
+
+// --- Bigint variants ---
 
 /**
  * Encode the given bigint as a varint. Returns the encoded number in a Uint8Array.
@@ -99,10 +105,10 @@ export declare function varintDecode(bytes: Uint8Array): number;
  * the unnecessary Uint8Array allocation here and the copy into the destination
  * buffer.
  */
-export declare function varintEncodeBN(num: bigint): Uint8Array;
+function varintEncodeBN(num: bigint): Uint8Array;
 
 /** The largest unsigned bigint we can encode (2^128 - 1) */
-export declare const MAX_SAFE_BIGINT: bigint;
+const MAX_SAFE_BIGINT: bigint;
 
 /**
  * Encode the specified unsigned bigint into varint encoding, into the provided
@@ -116,7 +122,7 @@ export declare const MAX_SAFE_BIGINT: bigint;
  * will fail (throw an exception) if you pass a number which does not fit within
  * the safe range.
  **/
-export declare function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number;
+function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset: number): number;
 
 /**
  * Decode the varint contained in a Uint8Array into a bigint. The number is
@@ -128,19 +134,19 @@ export declare function varintEncodeIntoBN(num: bigint, dest: Uint8Array, offset
  * Callers must ensure the entire number is ready in the buffer before calling
  * this method.
  */
-export declare function varintDecodeBN(bytes: Uint8Array): bigint;
+function varintDecodeBN(bytes: Uint8Array): bigint;
 
 /** Zigzag encode a signed integer in a number into an unsigned integer */
-export declare function zigzagEncode(val: number): number;
+function zigzagEncode(val: number): number;
 
 /** Zigzag decode an unsigned integer into a signed integer */
-export declare function zigzagDecode(val: number): number;
+function zigzagDecode(val: number): number;
 
 /** Zigzag encode a signed integer in a bigint into an unsigned bigint */
-export declare function zigzagEncodeBN(val: bigint): bigint;
+function zigzagEncodeBN(val: bigint): bigint;
 
 /** Zigzag decode an unsigned bigint into a signed bigint */
-export declare function zigzagDecodeBN(val: bigint): bigint;
+function zigzagDecodeBN(val: bigint): bigint;
 ```
 
 # License
